@@ -1,5 +1,6 @@
 import json
 import socket
+from time import sleep
 
 
 def set_server():
@@ -19,7 +20,8 @@ def set_server():
                     msg = 'Connection success!'
                 elif data['login'] == true_data['login'] and data['password'] \
                         and true_data['password'].startswith(data['password']):
-                    msg = 'Exception happened during login'
+                    sleep(0.2)
+                    msg = 'Wrong password!'
                 elif data['login'] == true_data['login']:
                     msg = 'Wrong password!'
                 else:
